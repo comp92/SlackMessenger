@@ -56,7 +56,10 @@ public class SlackGui extends JFrame {
 		add(newLabel("Nick: ", 10,65,50,30));
 		
 		//Emoji
-		final JTextField emoji = new JTextField(params[3]);
+		String tmp = params[3];
+		if(!tmp.startsWith(":")) tmp = ":" + tmp; //Ensures the emoji has the proper format
+		if(!tmp.endsWith(":")) tmp = tmp + ":";
+		final JTextField emoji = new JTextField(tmp);
 		emoji.setBounds(START_X,100,WIDTH,20);
 		add(emoji);
 		add(newLabel("Icon: ", 10,95,50,30));
