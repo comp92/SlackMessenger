@@ -1,6 +1,8 @@
 # Slack Messenger
 Eliminates the bloat of having a browser open to send messages in your slack team!
 
+#Credits
+https://github.com/gpedro/slack-webhook : The API used in this program.  
 
 # How to use:
 Add an incoming webhook to your team.  
