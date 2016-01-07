@@ -109,6 +109,7 @@ public class SlackGui extends JFrame {
 					return;
 				}
 				apiBox.addItem(url);
+				apiBox.setSelectedIndex(apiBox.getItemCount()-1);
 			}
 		});
 		add(addBtn);

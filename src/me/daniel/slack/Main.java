@@ -51,6 +51,9 @@ public class Main {
 			while(scanner.hasNext()) {
 				String line = scanner.nextLine().trim();
 				if(line.startsWith("url=")) {
+					if(line.equals("url=")) continue;
+					String tmp = line.split("url=")[1].trim();
+					if(tmp.equals("") || tmp.equals("null")) continue;
 					params[0] = params[0] + (params[0].equals("")? "" : ",") + line.split("url=")[1].trim(); //fmt: URL,URL,URL,URL,....
 					continue;
 				}
@@ -81,6 +84,7 @@ public class Main {
 				fw.println(configHelp[i]);
 			}
 			for(String s : urls) {
+				if(s==null || s.trim().equals("") || s.trim().equals("null")) continue; //Makes sure that no empty strings are sent, eliminates empty entries in the config.
 				fw.println("url=" + s) ;
 			}
 			fw.println("nick="+nick);
