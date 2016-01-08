@@ -4,18 +4,27 @@ import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JTextPane;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.SimpleAttributeSet;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
 
 import net.gpedro.integrations.slack.SlackApi;
 import net.gpedro.integrations.slack.SlackMessage;
@@ -23,6 +32,7 @@ import net.gpedro.integrations.slack.SlackMessage;
 public class SlackGui extends JFrame {
 	private static final long serialVersionUID = 1L;
 	private static final int FRAME_WIDTH=400, START_X = 55, WIDTH = FRAME_WIDTH - 10 - START_X;
+	private static boolean quitPrompt = true;
 	
 	private SlackApi api;
 
@@ -30,12 +40,15 @@ public class SlackGui extends JFrame {
 		try {
 			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
 		} catch(ClassNotFoundException e) {} catch(InstantiationException e) {} catch(IllegalAccessException e) {} catch(UnsupportedLookAndFeelException e) {}
-		setTitle("Slack Messenger v1.0 - By Comp");
+		setTitle("Slack Messenger v1.2");
 		setResizable(false);
-		setSize(FRAME_WIDTH,410);
+		setSize(FRAME_WIDTH,430);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLayout(null);
 		setLocationRelativeTo(null);
+		
+		if(params[4].equalsIgnoreCase("no")) quitPrompt=false;
+		
 		//API URL
 		final JComboBox<String> apiBox = new JComboBox<String>(params[0].split(","));
 //		System.out.println("Params 0: \"" + params[0] + "\"");
@@ -56,10 +69,7 @@ public class SlackGui extends JFrame {
 		add(newLabel("Nick: ", 10,65,50,30));
 		
 		//Emoji
-		String tmp = params[3];
-		if(!tmp.startsWith(":")) tmp = ":" + tmp; //Ensures the emoji has the proper format
-		if(!tmp.endsWith(":")) tmp = tmp + ":";
-		final JTextField emoji = new JTextField(tmp);
+		final JTextField emoji = new JTextField(params[3]);
 		emoji.setBounds(START_X,100,WIDTH,20);
 		add(emoji);
 		add(newLabel("Icon: ", 10,95,50,30));
@@ -73,46 +83,6 @@ public class SlackGui extends JFrame {
 		final JScrollPane sp = new JScrollPane(msg, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		sp.setBounds(10,135,getWidth()-20,200);
 		add(sp);
-		
-		//Save config
-		final JButton saveBtn = new JButton("Save");
-		saveBtn.setFont(new Font(Font.DIALOG, Font.PLAIN, 10));
-		saveBtn.setBounds(getWidth()-135,345,60,30);
-		saveBtn.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String[] params = new String[apiBox.getItemCount()];
-				for(int i = 0; i<apiBox.getItemCount(); i++) {
-					params[i] = apiBox.getItemAt(i);
-				}
-				if(Main.saveConfig(params, nick.getText().trim(), channel.getText().trim(), emoji.getText().trim())) {
-					alert("Success", "The config has been successfully saved."
-							+ "\n\nThe config is located at \"" + Main.config.getAbsolutePath() + "\""
-					, JOptionPane.INFORMATION_MESSAGE);
-				} else {
-					alert("Error", "The config could not be saved!", JOptionPane.ERROR_MESSAGE);
-				}
-			}
-			
-		});
-		add(saveBtn);
-		
-		final JButton addBtn = new JButton("Add URL");
-		addBtn.setFont(new Font(Font.DIALOG, Font.PLAIN, 10));
-		addBtn.setBounds(10, 345, 80, 30);
-		addBtn.addActionListener(new ActionListener() {
-			
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				String url = JOptionPane.showInputDialog(null, "Enter the URL: ", "Add a URL", JOptionPane.QUESTION_MESSAGE);
-				if (url == null || url.length() < 1) {
-					return;
-				}
-				apiBox.addItem(url);
-				apiBox.setSelectedIndex(apiBox.getItemCount()-1);
-			}
-		});
-		add(addBtn);
 		
 		//Send
 		final JButton sendBtn = new JButton("Send");
@@ -154,6 +124,145 @@ public class SlackGui extends JFrame {
 			
 		});
 		add(sendBtn);
+
+		
+		JMenuBar menubar = new JMenuBar();
+		JMenu file = new JMenu("File");
+		file.setMnemonic(KeyEvent.VK_F);
+		
+		//Remove URL menu bar entry
+		final JMenuItem rmItem = new JMenuItem("Remove URL");
+		rmItem.setMnemonic(KeyEvent.VK_R);
+		if(apiBox.getItemCount()<1) {
+			rmItem.setEnabled(false);
+		}
+		rmItem.addActionListener(new ActionListener() {
+		    @Override
+		    public void actionPerformed(ActionEvent event) {
+		    	if(apiBox.getItemCount()==0) return;
+				int in = JOptionPane.showConfirmDialog(null, "This will remove the current URL.\nYou cannot undo this. Are you sure?", "Remove URL", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				if(in==JOptionPane.YES_OPTION) {
+					apiBox.removeItemAt(apiBox.getSelectedIndex());
+					if(apiBox.getItemCount()<1) {
+						rmItem.setEnabled(false);
+					}
+				}
+		    }
+		});
+		//Add URL menu bar entry
+				JMenuItem addItem = new JMenuItem("Add URL");
+				addItem.setMnemonic(KeyEvent.VK_A);
+				addItem.addActionListener(new ActionListener() {
+				    @Override
+				    public void actionPerformed(ActionEvent event) {
+				    	String url = JOptionPane.showInputDialog(null, "Enter the URL: ", "Add a URL", JOptionPane.QUESTION_MESSAGE);
+						if (url == null || url.length() < 1) {
+							return;
+						}
+						apiBox.addItem(url);
+						apiBox.setSelectedIndex(apiBox.getItemCount()-1);
+						if(!rmItem.isEnabled()) rmItem.setEnabled(true);
+				    }
+				});
+				file.add(addItem);
+		file.add(rmItem);
+		
+		//Save config menu bar entry
+		JMenuItem saveItem = new JMenuItem("Save config");
+		saveItem.setMnemonic(KeyEvent.VK_S);
+		saveItem.addActionListener(new ActionListener() {
+		    @Override
+		    public void actionPerformed(ActionEvent event) {
+		    	String[] params = new String[apiBox.getItemCount()];
+				for(int i = 0; i<apiBox.getItemCount(); i++) {
+					params[i] = apiBox.getItemAt(i);
+				}
+				if(Main.saveConfig(params, nick.getText().trim(), channel.getText().trim(), emoji.getText().trim(),quitPrompt)) {
+					alert("Success", "The config has been successfully saved."
+							+ "\n\nThe config is located at \"" + Main.config.getAbsolutePath() + "\""
+					, JOptionPane.INFORMATION_MESSAGE);
+				} else {
+					alert("Error", "The config could not be saved!", JOptionPane.ERROR_MESSAGE);
+				}
+		    }
+		});
+		file.add(saveItem);
+		file.addSeparator();
+		
+		//Exit application menu bar entry
+		JMenuItem quitItem = new JMenuItem("Quit");
+		quitItem.setMnemonic(KeyEvent.VK_Q);
+		quitItem.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(!quitPrompt) System.exit(0);
+				int in = JOptionPane.showConfirmDialog(null, "Are you sure you want to quit?\nThis prompt can be disabled from\nHelp->Toggle Quit Prompt", "Quit application?", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				if(in==JOptionPane.YES_OPTION) {
+					System.exit(0);
+				}
+			}
+			
+		});
+		file.add(quitItem);
+		
+		menubar.add(file);
+		JMenu helpMenu = new JMenu("Help");
+		helpMenu.setMnemonic(KeyEvent.VK_H);
+		
+		JMenuItem toggleQuit = new JMenuItem("Toggle Quit Prompt");
+		toggleQuit.setMnemonic(KeyEvent.VK_T);
+		toggleQuit.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				int in = JOptionPane.showConfirmDialog(null, "Would you like to be prompted on attempting to quit?\nThis setting is currently set to: " + ((quitPrompt)? "yes" : "no") + "\nRemember to save your config after you change this.", "Toggle Quit Prompt", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+				System.out.println(in);
+				if(in==-1) return;
+				if(in == JOptionPane.YES_OPTION) {
+					quitPrompt=true;
+				} else {
+					quitPrompt=false;
+				}
+			}
+			
+		});
+		helpMenu.add(toggleQuit);
+		helpMenu.addSeparator();
+		
+		JMenuItem about = new JMenuItem("About");
+		about.setMnemonic(KeyEvent.VK_A);
+		about.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JFrame aboutFrame = new JFrame("Slack Messenger - About");
+				aboutFrame.setSize(550,220);
+				aboutFrame.setLocationRelativeTo(null);
+				aboutFrame.setVisible(true);
+				aboutFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+				aboutFrame.setResizable(false);
+				JTextPane aboutTxt = new JTextPane();
+		        appendToPane(aboutTxt, "Slack messenger - Send messages to teams on Slack without a browser.\n", new Color(0,0,128));
+		        appendToPane(aboutTxt, "Created by ", Color.BLACK);
+		        appendToPane(aboutTxt, "Comp (Daniel)", new Color(138,43,226)); 
+		        appendToPane(aboutTxt, ", 7 January 2016\n", Color.BLACK);
+		        appendToPane(aboutTxt, "Credits:\n", Color.BLACK);
+		        appendToPane(aboutTxt, "https://github.com/gpedro/slack-webhook : The API used in this program.\n", Color.BLUE);
+		        appendToPane(aboutTxt, "\nThis program is on github:\n", Color.BLACK);
+		        appendToPane(aboutTxt, "https://github.com/comp92/SlackMessenger", Color.RED);
+
+				aboutTxt.setEditable(false);
+		        aboutFrame.add(aboutTxt);
+			}
+			
+		});
+		
+		helpMenu.add(about);
+		menubar.add(helpMenu);
+		
+		setJMenuBar(menubar);
+		
 		setVisible(true);
 		if(((String) apiBox.getSelectedItem()).equals("")) {
 			apiBox.requestFocus();
@@ -178,4 +287,18 @@ public class SlackGui extends JFrame {
 	private void alert(String title, String msg, int status) {
 		JOptionPane.showMessageDialog(null, msg, title, status);
 	}
+	
+	//http://stackoverflow.com/questions/9650992/how-to-change-text-color-in-the-jtextarea
+	private void appendToPane(JTextPane tp, String msg, Color c) {
+        StyleContext sc = StyleContext.getDefaultStyleContext();
+        AttributeSet aset = sc.addAttribute(SimpleAttributeSet.EMPTY, StyleConstants.Foreground, c);
+
+        aset = sc.addAttribute(aset, StyleConstants.FontFamily, "Lucida Console");
+        aset = sc.addAttribute(aset, StyleConstants.Alignment, StyleConstants.ALIGN_JUSTIFIED);
+
+        int len = tp.getDocument().getLength();
+        tp.setCaretPosition(len);
+        tp.setCharacterAttributes(aset, false);
+        tp.replaceSelection(msg);
+    }
 }

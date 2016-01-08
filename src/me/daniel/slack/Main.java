@@ -15,8 +15,10 @@ public class Main {
 			"#nick=<YOUR NICKNAME>",
 			"#channel=<A CHANNEL IN YOUR SLACK TEAM>",
 			"#icon=<YOUR ICON>",
+			"#quitprompt=<YES|NO>",
 			"#The settings must begin the line",
 			"#Multiple URL declarations may be made",
+			"#If quitprompt is set to no, you will not be prompted when quitting the program.",
 			"#It is recommended to use the interface to save the config instead of editing on your own"
 	};
 	
@@ -26,7 +28,7 @@ public class Main {
 	}
 	
 	private static String[] init() {
-		String[] params = new String[4];
+		String[] params = new String[5];
 		for(int i=0;i<params.length;i++) {
 			params[i]="";
 		}
@@ -69,6 +71,12 @@ public class Main {
 					params[3] = line.split("icon=")[1].trim();
 					continue;
 				}
+				if(line.startsWith("quitprompt=")) {
+					if(line.equals("quitprompt=")) continue;
+					String tmp = line.split("quitprompt=")[1].trim();
+					if(tmp.equals("")) continue;
+					params[4] = line.split("quitprompt=")[1].trim();
+				}
 			}
 			scanner.close();
 		} catch (FileNotFoundException e) {
@@ -77,7 +85,7 @@ public class Main {
 		return params;
 	}
 	
-	public static boolean saveConfig(String[] urls, String nick, String channel, String emoji) {
+	public static boolean saveConfig(String[] urls, String nick, String channel, String emoji, boolean quitPrompt) {
 		try {
 			PrintStream fw = new PrintStream(config);
 			for(int i = 0; i < configHelp.length; i++) {
@@ -90,6 +98,7 @@ public class Main {
 			fw.println("nick="+nick);
 			fw.println("icon="+emoji);
 			fw.println("channel="+channel);
+			fw.println("quitprompt="+((quitPrompt)? "yes" : "no"));
 			fw.close();
 			return true;
 		} catch (FileNotFoundException e) {
